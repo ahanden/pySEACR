@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import ecdf
 from pySEACR.utils import combine, diff, find_best_quantile
-from pySEACR.auc_bed_file import AUCBEDFile
+from pySEACR.auc_from_bdg import BDG
 from pySEACR.pct_remain import pct_remain_vec, pct_remain_max
 
 class ThresholdFinder(object):
@@ -29,7 +29,7 @@ class ThresholdFinder(object):
         Returns:
             float
         """
-        if not isinstance(self.ctrl, AUCBEDFile):
+        if not isinstance(self.ctrl, BDG):
             return self.static(self.exp.vec)
         inner = pct_remain_vec(self.exp.vec, self.ctrl.vec, self.both)
         indices = [_ for _ in range(len(self.both)) if inner[_] < 1]
@@ -46,7 +46,7 @@ class ThresholdFinder(object):
         Returns:
             float
         """
-        if not isinstance(self.ctrl, AUCBEDFile):
+        if not isinstance(self.ctrl, BDG):
             return self.static(self.exp.max)
         low_values = [_ for _ in combine(self.exp.vec, self.ctrl.vec) if _ <= relaxed_thresh]
         relaxed_thresh_pct = pct_remain_vec(self.exp.vec, self.ctrl.vec, relaxed_thresh)

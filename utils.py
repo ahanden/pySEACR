@@ -65,7 +65,7 @@ def combine(list_1, list_2):
     Returns:
         Sorted list
     """
-    return sorted(set(list_1).union(set(list_2)))
+    return np.unique(np.concatenate((list_1, list_2)))
 
 def diff(vec):
     """
