@@ -1,9 +1,24 @@
-import numpy as np
-import warnings
-from scipy.stats import gaussian_kde, ecdf
+"""
+Find normalization factors.
+"""
+from scipy.stats import gaussian_kde
+
+from pySEACR.utils import find_farthest, seq
+
 
 class Normalize(object):
+    """
+    Find normalization factors.
+    """
+
     def __init__(self, exp, ctrl):
+        """
+        Create a new Normalize object.
+
+        Parameters:
+            exp (BDG): Experimental/treatment data
+            ctrl (BDG): Control/IgG data
+        """
         self.exp = exp
         self.ctrl = ctrl
 
@@ -36,4 +51,4 @@ class Normalize(object):
         Returns:
             float
         """
-        return max_density(self.exp) / max_density(self.ctrl)
+        return self.max_density(self.exp) / self.max_density(self.ctrl)

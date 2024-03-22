@@ -1,6 +1,9 @@
-import numpy as np
+"""
+Miscellaneous functions for pySEACR
+"""
 import warnings
-from scipy.stats import gaussian_kde, ecdf
+
+import numpy as np
 
 
 def seq(length):
