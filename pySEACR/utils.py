@@ -1,8 +1,4 @@
-"""
-Miscellaneous functions for pySEACR
-"""
-import warnings
-
+"""Miscellaneous functions for pySEACR."""
 import numpy as np
 
 
@@ -18,6 +14,7 @@ def seq(length):
     """
     return [1 - _/(length - 1) for _ in range(length)]
 
+
 def get_farthest_value(vec):
     """
     Find the value with the largest distance.
@@ -31,15 +28,17 @@ def get_farthest_value(vec):
         An elment of vec if the distance is > 0.9 * max distance. Else None.
     """
     vec.sort(reverse=True)
-    vec_max = max(vec)
-    count = seq(len(vec))
-    quant = [_ / vec_max for _ in vec]
-    distance = [c - q for c, q in zip(count, quant)]
+    count_and_quant = zip(
+        seq(len(vec)),
+        vec / max(vec),
+    )
+    distance = [c - q for c, q in count_and_quant]
 
-    farthest_index = max(range(len(vec)), key=lambda _: distance[_])
+    farthest_index = np.argmax(distance)
     if distance[farthest_index] <= 0.9 * max(distance):
         return None
     return vec[farthest_index]
+
 
 def find_farthest(vec):
     """
@@ -51,24 +50,26 @@ def find_farthest(vec):
     Returns:
         The max of get_farthest_value(vec) and vec's 90th quantile.
     """
-    value = get_farthest_value(vec)
+    farthest = get_farthest_value(vec)
     ninetieth = np.quantile(vec, 0.9)
-    if value is None or value > ninetieth:
-        return value
+    if farthest is None or farthest > ninetieth:
+        return farthest
     return ninetieth
 
-def combine(list_1, list_2):
+
+def combine(left, right):
     """
     Find the sorted union of two lists.
 
     Parameters:
-        list_1 (list): First list
-        list_2 (list): Second list
+        left (list): First list
+        right (list): Second list
 
     Returns:
         Sorted list
     """
-    return np.unique(np.concatenate((list_1, list_2)))
+    return np.unique(np.concatenate((left, right)))
+
 
 def diff(vec):
     """
@@ -80,7 +81,10 @@ def diff(vec):
     Returns:
         The difference between every neighboring elements as a list
     """
-    return np.array([abs(a - b)  for a, b in zip(vec[1:], vec[:-1])])
+    steps = zip(vec[1:], vec[:-1])
+    deltas = [abs(left - right) for left, right in steps]
+    return np.array(deltas)
+
 
 def find_best_quantile(vec):
     """
