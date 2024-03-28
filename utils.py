@@ -80,7 +80,7 @@ def diff(vec):
     Returns:
         The difference between every neighboring elements as a list
     """
-    return [a - b  for a, b in zip(vec[1:], vec[:-1])]
+    return np.array([abs(a - b)  for a, b in zip(vec[1:], vec[:-1])])
 
 def find_best_quantile(vec):
     """

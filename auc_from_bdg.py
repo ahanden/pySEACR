@@ -106,10 +106,11 @@ class BDG(object):
                 auc_stretch = Stretch(region)
         self.data.append(auc_stretch)
         self.vec = np.array([_.auc for _ in self.data])
-        self.max = np.array([_.peak for _ in self.data])
+        self.max = np.array([_.n for _ in self.data])
 
     def _read_bdg(self, bdg_fname):
         with open(bdg_fname, "r") as stream:
             reader = csv.reader(stream, delimiter="\t")
             _ = next(reader)
-            return (BDGRow(row) for row in reader)
+            for row in reader:
+                yield BDGRow(row)

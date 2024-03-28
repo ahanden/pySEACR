@@ -42,4 +42,4 @@ def pct_remain_max(vec_1, vec_2, x):
     """
     ecdf_1 = ecdf(vec_1).cdf
     ecdf_2 = ecdf(vec_2).cdf
-    return 1 + ecdf_2.evaluate(x) - ecdf_1.evaluate(x)
+    return 1 - (ecdf_1.evaluate(x) - ecdf_2.evaluate(x))

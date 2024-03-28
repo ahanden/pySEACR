@@ -32,10 +32,10 @@ class ThresholdFinder(object):
         Returns:
             list
         """
-        delta = [abs(_) for _ in diff(pct_remain_vec(self.exp.vec, self.ctrl.vec, self.both))]
+        delta = diff(pct_remain_vec(self.exp.vec, self.ctrl.vec, self.both))
         best = find_best_quantile(delta)
-        indices = [_ for _ in range(len(delta)) if delta[_] != 0 and delta[_] < best]
-        return [self.both[_] for _ in indices]
+        sp = self.both[:-1][delta < best]
+        return sp[sp != 0]
 
     def relaxed(self):
         """
@@ -86,9 +86,8 @@ class ThresholdFinder(object):
         """
         both = combine(self.exp.max, self.ctrl.max)
         pct = pct_remain_max(self.exp.max, self.ctrl.max, both)
-        if True in (_ > 1 for _ in pct):
-            indices = [_ for _ in range(len(pct)) if pct[_] > 1]
-            return min(both[_] for _ in indices)
+        if any(pct > 1):
+            return min(both[pct > 1])
         return 1
 
     def static(self, vector):
@@ -118,8 +117,7 @@ class ThresholdFinder(object):
         sp_thresh = sp_values[search_values.argmax()]
         check_thresh = self.stringent(sp_thresh)
         both_pct = pct_remain_vec(self.exp.vec, self.ctrl.vec, self.both)
-        indices = [_ for _ in range(len(both_pct)) if both_pct[_] < 1]
-        old_values = pct_remain_vec(self.exp.vec, self.ctrl.vec, [self.both[_] for _ in indices])
+        old_values = pct_remain_vec(self.exp.vec, self.ctrl.vec, self.both[both_pct < 1])
         if max(search_values) / max(old_values) > 0.95:
             return sp_thresh, check_thresh
         return None
