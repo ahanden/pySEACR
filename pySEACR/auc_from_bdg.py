@@ -1,32 +1,27 @@
-"""
-Calculating area under the curve (AUC) of a BedGraph file.
-"""
+"""Calculating area under the curve (AUC) of a BedGraph file."""
 import csv
 
 import numpy as np
 
 
-class BDGRow(object):
-    """
-    Representation of a row from a BedGraph file.
-    """
+class BDGRow():
+    """Representation of a row from a BedGraph file."""
 
-    def __init__(self, data):
+    def __init__(self, row):
         """
         Create a new BDGRow.
 
         Parameters:
-            data (list): Fields from a BedGraph file.
+            row (list): Fields from a BedGraph file.
         """
-        self.contig = data[0]
-        self.start = int(data[1])
-        self.stop = int(data[2])
-        self.peak = float(data[3])
+        self.contig = row[0]
+        self.start = int(row[1])
+        self.stop = int(row[2])
+        self.peak = float(row[3])
 
-class Stretch(object):
-    """
-    SEACR identified window of regions to "clump".
-    """
+
+class Stretch():
+    """SEACR identified window of regions to "clump"."""
 
     def __init__(self, row):
         """
@@ -35,14 +30,24 @@ class Stretch(object):
         Parameters:
             row (BDGRow): The first element of the stretch
         """
-        self.contig, self.start, self.stop = row.contig, row.start, row.stop
-        self.peak_start, self.peak_stop = row.start, row.stop
+        self.contig = row.contig
+        self.coord = (row.start, row.stop)
+        self.peak_coord = (row.start, row.stop)
         self.peak = row.peak
         self._auc = self._calc_auc(row.start, row.stop, row.peak)
         self.n = 1
 
-    def _calc_auc(self, start, stop, peak):
-        return peak * (stop - start)
+    def is_contiguous(self, row):
+        """
+        Determine if a region is contiguous with this stretch.
+
+        Parameters:
+            row (BDGRow): Region to check
+
+        Returns:
+            True if contigous, else False
+        """
+        return self.contig == row.contig and self.coord[1] == row.start
 
     def extend(self, row):
         """
@@ -52,13 +57,13 @@ class Stretch(object):
             row (BDGRow): The region to add.
         """
         self.n += 1
-        self.stop = row.stop
+        self.coord = (self.coord[0], row.stop)
         self._auc += self._calc_auc(row.start, row.stop, row.peak)
         if row.peak > self.peak:
             self.peak = row.peak
-            self.peak_start, self.peak_stop = row.start, row.stop
+            self.peak_coord = (row.start, row.stop)
         elif row.peak == self.peak:
-            self.peak_stop = row.stop
+            self.peak_coord = (self.peak_coord[0], row.stop)
 
     def peak_coords(self):
         """
@@ -67,7 +72,7 @@ class Stretch(object):
         Returns:
             String in the format of contig:peak_start-peak_stop
         """
-        return f"{self.contig}:{self.peak_start}-{self.peak_stop}"
+        return f'{self.contig}:{self.peak_start}-{self.peak_stop}'
 
     @property
     def auc(self):
@@ -79,10 +84,13 @@ class Stretch(object):
         """
         return round(self._auc * 100) / 100
 
-class BDG(object):
-    """
-    BedGraph File.
-    """
+    def _calc_auc(self, start, stop, peak):
+        return peak * (stop - start)
+
+
+class BDG():
+    """BedGraph File."""
+
     def __init__(self, bdg_fname):
         """
         Read a BedGraph file into memory.
@@ -90,27 +98,27 @@ class BDG(object):
         Parameters:
             bdg_fname (str): File name
         """
-        self.data = []
+        self.regions = []
         regions_gen = self._read_bdg(bdg_fname)
-        region = next(regions_gen)
-        while region.peak == 0:
-            region = next(regions_gen)
-        auc_stretch = Stretch(region)
+        start = next(regions_gen)
+        while start.peak == 0:
+            start = next(regions_gen)
+        auc_stretch = Stretch(start)
         for region in regions_gen:
             if region.peak == 0:
                 continue
-            if auc_stretch.contig == region.contig and auc_stretch.stop == region.start:
+            if auc_stretch.is_contiguous(region):
                 auc_stretch.extend(region)
             else:
-                self.data.append(auc_stretch)
+                self.regions.append(auc_stretch)
                 auc_stretch = Stretch(region)
-        self.data.append(auc_stretch)
-        self.vec = np.array([_.auc for _ in self.data])
-        self.max = np.array([_.n for _ in self.data])
+        self.regions.append(auc_stretch)
+        self.vec = np.array([_.auc for _ in self.regions])
+        self.max = np.array([_.n for _ in self.regions])
 
     def _read_bdg(self, bdg_fname):
-        with open(bdg_fname, "r") as stream:
-            reader = csv.reader(stream, delimiter="\t")
-            _ = next(reader)
+        with open(bdg_fname, 'r') as stream:
+            reader = csv.reader(stream, delimiter='\t')
+            next(reader)
             for row in reader:
                 yield BDGRow(row)
