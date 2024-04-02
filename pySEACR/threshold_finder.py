@@ -1,7 +1,4 @@
-"""
-Calculate thresholds for peak identification.
-"""
-import numpy as np
+"""Calculate thresholds for peak identification."""
 from scipy.stats import ecdf
 
 from pySEACR.auc_from_bdg import BDG
@@ -9,10 +6,9 @@ from pySEACR.pct_remain import pct_remain_max, pct_remain_vec
 from pySEACR.utils import combine, diff, find_best_quantile
 
 
-class ThresholdFinder(object):
-    """
-    Calculate thresholds for peak identification.
-    """
+class ThresholdFinder():
+    """Calculate thresholds for peak identification."""
+
     def __init__(self, exp, ctrl):
         """
         Create a new ThresholdFinder object.
@@ -23,7 +19,8 @@ class ThresholdFinder(object):
         """
         self.exp = exp
         self.ctrl = ctrl
-        self.both = combine(exp.vec, ctrl.vec)
+        if isinstance(ctrl, BDG):
+            self.both = combine(exp.vec, ctrl.vec)
 
     def spurious_values(self):
         """
@@ -47,13 +44,16 @@ class ThresholdFinder(object):
         if not isinstance(self.ctrl, BDG):
             return self.static(self.exp.vec)
         inner = pct_remain_vec(self.exp.vec, self.ctrl.vec, self.both)
-        indices = [_ for _ in range(len(self.both)) if inner[_] < 1]
-        outer = pct_remain_vec(self.exp.vec, self.ctrl.vec, [self.both[_] for _ in indices])[:-1]
+        outer = pct_remain_vec(
+            self.exp.vec,
+            self.ctrl.vec,
+            self.both[inner < 1],
+        )[:-1]
         return self.both[outer.argmax()]
 
     def stringent(self, relaxed_thresh):
         """
-        Find the stringent threshold
+        Find the stringent threshold.
 
         Parameters:
             relaxed_thresh (float): Relaxed threshold
@@ -63,23 +63,34 @@ class ThresholdFinder(object):
         """
         if not isinstance(self.ctrl, BDG):
             return self.static(self.exp.max)
-        low_values = [_ for _ in combine(self.exp.vec, self.ctrl.vec) if _ <= relaxed_thresh]
-        relaxed_thresh_pct = pct_remain_vec(self.exp.vec, self.ctrl.vec, relaxed_thresh)
+        low_values = self.both[self.both <= relaxed_thresh]
         low_pct = pct_remain_vec(self.exp.vec, self.ctrl.vec, low_values)
-        search_values = abs((relaxed_thresh_pct + min(low_pct)) / 2 - low_pct)
+        search_values = abs(
+            (
+                pct_remain_vec(
+                    self.exp.vec,
+                    self.ctrl.vec,
+                    relaxed_thresh,
+                ) +
+                min(low_pct)
+            ) /
+            2 - low_pct,
+        )
         thresh_check = low_values[search_values.argmin()]
 
         if relaxed_thresh == thresh_check:
             return relaxed_thresh
-        high_values = np.array([_ for _ in low_values if _ > thresh_check])
-        high_max = max(high_values)
-        high_range = high_max - min(high_values)
-        search_values = abs(high_values - high_max + high_range / 2)
+
+        high_values = low_values[low_values > thresh_check]
+        search_values = abs(
+            high_values - max(high_values) +
+            (max(high_values) - min(high_values)) / 2,
+        )
         return high_values[search_values.argmin()]
 
     def genome(self):
         """
-        Find the genome threshold
+        Find the genome threshold.
 
         Returns:
             float
@@ -94,30 +105,40 @@ class ThresholdFinder(object):
         """
         Find the threshold from a vector.
 
+        Parameters:
+            vector (nparray): Vector for analysis
+
         Returns:
             float
         """
         model = ecdf(vector).cdf
         quantiles = 1 - model.evaluate(vector)
-        indicies = [_ for _ in range(len(quantiles)) if quantiles[_] < self.ctrl]
-        return min([vector[_] for _ in indicies])
+        return min(vector[quantiles < self.ctrl])
+
+    def filter_by_pct(self, vector):
+        """
+        Filter pct_remain_vec results by pct_remain_vec.
+
+        Parameters:
+            vector (nparray): Vector to calculate by
+
+        Returns:
+            nparray
+        """
+        pct = pct_remain_vec(self.exp.vec, self.ctrl.vec, vector)
+        return pct_remain_vec(self.exp.vec, self.ctrl.vec, vector[pct < 1])
 
     def thresh_check(self):
         """
         Check for spurious values and conditionally adjust thresholds.
+
+        Returns:
+            Adjusted thresholds (if they need adjusting)
         """
         sp_values = self.spurious_values()
-        sp_pct = pct_remain_vec(self.exp.vec, self.ctrl.vec, sp_values)
-        indices = [_ for _ in range(len(sp_pct)) if sp_pct[_] < 1]
-        search_values = pct_remain_vec(
-            self.exp.vec,
-            self.ctrl.vec,
-            np.array([sp_values[_] for _ in indices]),
-        )
-        sp_thresh = sp_values[search_values.argmax()]
-        check_thresh = self.stringent(sp_thresh)
-        both_pct = pct_remain_vec(self.exp.vec, self.ctrl.vec, self.both)
-        old_values = pct_remain_vec(self.exp.vec, self.ctrl.vec, self.both[both_pct < 1])
+        search_values = self.filter_by_pct(sp_values)
+        old_values = self.filter_by_pct(self.both)
         if max(search_values) / max(old_values) > 0.95:
-            return sp_thresh, check_thresh
+            sp_thresh = sp_values[search_values.argmax()]
+            return sp_values[search_values.argmax()], self.stringent(sp_thresh)
         return None

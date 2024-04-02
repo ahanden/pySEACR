@@ -2,13 +2,14 @@
 Find normalization factors.
 """
 import numpy as np
-from scipy.stats import gaussian_kde, iqr
+from scipy.stats import gaussian_kde
 from scipy.signal import decimate
-
-from sklearn.neighbors import KernelDensity
+from rpy2.robjects.packages import importr
+from rpy2.robjects import vectors
 
 from pySEACR.utils import find_farthest, seq
 
+stats = importr('stats')
 
 class Normalize(object):
     """
@@ -26,19 +27,6 @@ class Normalize(object):
         self.exp = exp
         self.ctrl = ctrl
 
-
-    def bw_nrd0(self, x):
-        hi = np.std(x)
-        lo = min(hi, iqr(x) / 1.34)
-        if lo is None:
-            if hi:
-                lo = hi
-            elif abs(x[0]):
-                lo = abs(x[0])
-            else:
-                lo = 1
-        return 0.9 * lo * len(x) ** -0.2
-
     def max_density(self, vec):
         """
         Estimate input for a kernel density function that has the largest output.
@@ -53,26 +41,11 @@ class Normalize(object):
         vec_min = min(vec)
         vec_range = cutoff - vec_min
         values = vec[vec <= cutoff]
-        #if len(values) > 510:
-            #step = len(values) / 510
-            #values = values[[round(step * _) for _ in range(510)]]
-            #start = values[0] - 300
-            #end = values[-1] + 300
-            #values = np.random.choice(values[1:-1], 512, replace=False)
-            #values[0] = start
-            #values[-1] = end
-        #values = np.insert(values, 0, min(values) - 300)
-        #values = np.append(values, max(values) + 300)
-        kde = KernelDensity(kernel='gaussian', bandwidth=self.bw_nrd0(values)).fit(
-            np.reshape(values, (-1, 1)),
-        )
-        inputs = kde.sample(512, random_state=412)
-        densities = 10 ** np.reshape(
-            kde.score_samples(inputs),
-            (1, 512)
-        )[0]
-        y_max_index = np.argmax(densities)
-        x_values = np.reshape(inputs, (1, 512))[0]
+        values = vectors.FloatVector(values)
+        kde = stats.density(values)
+        densities = kde[1]
+        y_max_index = np.argmax(kde[1])
+        x_values = list(kde[0])
         return x_values[y_max_index]
 
     def constant(self):

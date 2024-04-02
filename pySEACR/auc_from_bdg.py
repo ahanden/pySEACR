@@ -72,7 +72,7 @@ class Stretch():
         Returns:
             String in the format of contig:peak_start-peak_stop
         """
-        return f'{self.contig}:{self.peak_start}-{self.peak_stop}'
+        return f'{self.contig}:{self.peak_coord[0]}-{self.peak_coord[1]}'
 
     @property
     def auc(self):

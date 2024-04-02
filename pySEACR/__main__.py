@@ -1,12 +1,9 @@
-"""
-Command line tool for pySEACR
-"""
+"""Command line tool for pySEACR."""
 import argparse
 import os
 
 from pySEACR.auc_from_bdg import BDG
 from pySEACR.normalize import Normalize
-#from pySEACR.pct_remain import pct_remain_vec
 from pySEACR.threshold_finder import ThresholdFinder
 
 
@@ -37,6 +34,53 @@ def parse_args():
 
     return parser.parse_args()
 
+
+def normalize(exp, ctrl):
+    """
+    Normalize the values in the control data.
+
+    Parameters:
+        exp (BDG): BDG file object of experimental/treatment data
+        ctrl (BDG): BDG file object of the contorl/IgG data
+
+    Returns:
+        Normalized numpy.array
+    """
+    normer = Normalize(exp, ctrl)
+    return ctrl.vec * normer.constant()
+
+
+def thresh_from_ctrl(exp, ctrl_file, norm, height):
+    """
+    Compute height thresholds by comparing two files.
+
+    Parameters:
+        exp (BDG): Experimental/treatment BDG file object
+        ctrl_file (str): Path to the control/IgG bdg file
+        norm (str): If yes, will normalize data before calculating thresholds
+        height (str): relaxed or stringent
+
+    Returns:
+        height threshold and genome threshold
+    """
+    ctrl = BDG(ctrl_file)
+    if norm == 'yes':
+        ctrl.vec = normalize(exp, ctrl)
+
+    thresholds = ThresholdFinder(exp, ctrl)
+    auc_thresh = thresholds.relaxed()
+    check = thresholds.thresh_check()
+
+    if height == 'relaxed':
+        if check is not None:
+            auc_thresh = check[0]
+    else:
+        stringent = thresholds.stringent(auc_thresh)
+        auc_thresh = stringent if check is None else check[1]
+
+    return auc_thresh, thresholds.genome()
+
+
 def main(args):
     """
     pySEACR main body.
@@ -46,59 +90,45 @@ def main(args):
     """
     exp = BDG(args.exp)
 
-    constant = 1
+    auc_thresh = 0
+    genome = 0
     if os.path.isfile(args.ctrl):
-        ctrl = BDG(args.ctrl)
-        if args.norm == "yes":
-            norm = Normalize(exp, ctrl)
-            constant = norm.constant()
-            ctrl.vec = [_ * constant for _ in ctrl.vec]
-
-        thresholds = ThresholdFinder(exp, ctrl)
-        genome = thresholds.genome()
-        relaxed = thresholds.relaxed()
-        check = thresholds.thresh_check()
-
-        if args.height == "relaxed":
-            auc_thresh = relaxed if check is None else check[0]
-            #fdr = 1 - pct_remain_vec(exp.vec, ctrl.vec, relaxed)
-        else:
-            stringent = thresholds.stringent(relaxed)
-            auc_thresh = stringent if check is None else check[1]
-            #fdr = 1 - pct_remain_vec(exp.vec, ctrl.vec, stringent)
+        auc_thresh, genome = thresh_from_ctrl(
+            exp,
+            args.ctrl,
+            args.norm,
+            args.height,
+        )
     else:
-        ctrl = float(args.ctrl)
-        thresholds = ThresholdFinder(exp, ctrl)
-        if args.height == "relaxed":
-            auc_thresh = thresholds.static(exp.vec)
-        else:
-            auc_thresh = thresholds.static(exp.max)
-        genome = 0
-        #fdr = (ctrl, ctrl)
+        args.ctrl = float(args.ctrl)
+        thresholds = ThresholdFinder(exp, args.ctrl)
+        vec_input = exp.vec if args.height == 'relaxed' else exp.max
+        auc_thresh = thresholds.static(vec_input)
 
-    write_output(exp.data, auc_thresh, genome)
+    print_output(exp.regions, auc_thresh, genome)
 
-def write_output(data, thresh_1, thresh_2):
+
+def print_output(stretches, height, width):
     """
     Print pySEACR results in BED format.
 
     Parameters:
-        data (list): AUC stretches from a BDG
-        thresh_1 (float): Minimum peak height
-        thresh_2 (float): Minimum peak width
+        stretches (list): AUC stretches from a BDG
+        height (float): Minimum peak height
+        width (float): Minimum peak width
     """
-    for stretch in data:
-        print(stretch.peak, stretch.n)
-        if stretch.peak > thresh_1 and stretch.n > thresh_2:
-            print("\t".join([str(_) for _ in [
+    for stretch in stretches:
+        if stretch.peak > height and stretch.n > width:
+            print('\t'.join([str(_) for _ in (
                 stretch.contig,
-                stretch.start,
-                stretch.stop,
+                stretch.coord[0],
+                stretch.coord[1],
                 stretch.auc,
                 stretch.peak,
                 stretch.peak_coords(),
-                stretch.n
-            ]]))
+                stretch.n,
+            )]))
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     main(parse_args())

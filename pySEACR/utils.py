@@ -10,9 +10,10 @@ def seq(length):
         length (int): List length
 
     Returns:
-        list
+        nparray
     """
-    return [1 - _/(length - 1) for _ in range(length)]
+    vector = np.array(range(length))
+    return 1 - vector / (length - 1)
 
 
 def get_farthest_value(vec):
@@ -27,7 +28,7 @@ def get_farthest_value(vec):
     Returns:
         An elment of vec if the distance is > 0.9 * max distance. Else None.
     """
-    vec.sort(reverse=True)
+    vec = np.sort(vec)[::-1]
     count_and_quant = zip(
         seq(len(vec)),
         vec / max(vec),
