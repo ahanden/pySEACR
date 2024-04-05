@@ -1,3 +1,21 @@
+Metadata-Version: 2.1
+Name: pySEACR
+Version: 0.0.0
+Summary: Sparse Enrichment Analysis for CUT&RUN
+Author-email: Adam Handen <adam.handen@gmail.com>
+Project-URL: homepage, https://github.com/ahanden/pySEACR
+Project-URL: repository, https://github.com/ahanden/pySEACR
+Project-URL: issues, https://github.com/ahanden/pySEACR/issues
+Keywords: bioinformatics,RNA,editing
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Operating System :: OS Independent
+Classifier: License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)
+Requires-Python: >=3.12.0
+Description-Content-Type: text/markdown
+Requires-Dist: setuptools>=68.2.2
+Requires-Dist: numpy>=1.26.1
+Requires-Dist: scipy>=1.11.3
+
 # pySEACR
 Python3 implementation of [SEACR](https://github.com/FredHutch/SEACR).
 

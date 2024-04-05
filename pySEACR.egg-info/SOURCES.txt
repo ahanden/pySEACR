@@ -1,0 +1,14 @@
+README.md
+pyproject.toml
+pySEACR/__main__.py
+pySEACR/auc_from_bdg.py
+pySEACR/normalize.py
+pySEACR/normalize_R.py
+pySEACR/pct_remain.py
+pySEACR/threshold_finder.py
+pySEACR/utils.py
+pySEACR.egg-info/PKG-INFO
+pySEACR.egg-info/SOURCES.txt
+pySEACR.egg-info/dependency_links.txt
+pySEACR.egg-info/requires.txt
+pySEACR.egg-info/top_level.txt
