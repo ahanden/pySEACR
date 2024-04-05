@@ -16,20 +16,24 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-e',
-        '--exp',
+        'exp',
+        help='Experimental/Treatment bedgraph',
     )
     parser.add_argument(
-        '-c',
-        '--ctrl',
+        'ctrl',
+        help='Control/IGG bedgraph or a scalar from 0 to 1',
     )
     parser.add_argument(
         '-n',
         '--norm',
+        help='Normalize the data before finding peaks',
+        action='store_true',
     )
     parser.add_argument(
-        '-H',
-        '--height',
+        '-s',
+        '--stringent',
+        help='Use the stringent peak threshold',
+        action='store_true',
     )
 
     return parser.parse_args()
@@ -50,7 +54,7 @@ def normalize(exp, ctrl):
     return ctrl.vec * normer.constant()
 
 
-def thresh_from_ctrl(exp, ctrl_file, norm, height):
+def thresh_from_ctrl(exp, ctrl_file, norm, use_stringent):
     """
     Compute height thresholds by comparing two files.
 
@@ -58,25 +62,24 @@ def thresh_from_ctrl(exp, ctrl_file, norm, height):
         exp (BDG): Experimental/treatment BDG file object
         ctrl_file (str): Path to the control/IgG bdg file
         norm (str): If yes, will normalize data before calculating thresholds
-        height (str): relaxed or stringent
+        use_stringent (bool): Whether to use the stringent threshold
 
     Returns:
         height threshold and genome threshold
     """
     ctrl = BDG(ctrl_file)
-    if norm == 'yes':
+    if norm:
         ctrl.vec = normalize(exp, ctrl)
 
     thresholds = ThresholdFinder(exp, ctrl)
     auc_thresh = thresholds.relaxed()
     check = thresholds.thresh_check()
 
-    if height == 'relaxed':
-        if check is not None:
-            auc_thresh = check[0]
-    else:
+    if use_stringent:
         stringent = thresholds.stringent(auc_thresh)
         auc_thresh = stringent if check is None else check[1]
+    elif check is not None:
+        auc_thresh = check[0]
 
     return auc_thresh, thresholds.genome()
 
@@ -97,12 +100,12 @@ def main(args):
             exp,
             args.ctrl,
             args.norm,
-            args.height,
+            args.stringent,
         )
     else:
         args.ctrl = float(args.ctrl)
         thresholds = ThresholdFinder(exp, args.ctrl)
-        vec_input = exp.vec if args.height == 'relaxed' else exp.max
+        vec_input = exp.max if args.stringent else exp.vec
         auc_thresh = thresholds.static(vec_input)
 
     print_output(exp.regions, auc_thresh, genome)
