@@ -14,7 +14,10 @@ def parse_args():
     Returns:
         namespace
     """
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        prog='pySEACR',
+        description='Sparse Enrichment Analysis for CUT&RUN',
+    )
     parser.add_argument(
         'exp',
         help='Experimental/Treatment bedgraph',
