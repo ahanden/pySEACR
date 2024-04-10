@@ -1,9 +1,6 @@
 [build-system]
-requires = ["setuptools>=68.2.2", "numpy>=1.26.1", "scipy>=1.11.3", "scikit-learn>=1.4.1", "setuptools-git-versioning>=2.0,<3"]
+requires = ["setuptools>=68.2.2", "numpy>=1.26.1", "scipy>=1.11.3", "scikit-learn>=1.4.1"]
 build-backend = "setuptools.build_meta"
-
-[tool.setuptools-git-versioning]
-enabled = true
 
 [project]
 name = "pySEACR"
@@ -24,7 +21,7 @@ classifiers = [
 requires-python = ">=3.12.0"
 dependencies = ["setuptools>=68.2.2", "numpy>=1.26.1", "scipy>=1.11.3"]
 
-dynamic = ["version"]
+version = "v0.3"
 
 [project.urls]
 homepage = "https://github.com/ahanden/pySEACR"
